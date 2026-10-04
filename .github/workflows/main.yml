@@ -1,0 +1,29 @@
+name: Compile Pawn
+
+on:
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project
+        shell: powershell
+        run: |
+          Expand-Archive -Path "KRANIN_PWN_MOD_ENGLISH.zip" -DestinationPath "project" -Force
+
+      - name: Compile bykranin.pwn
+        shell: cmd
+        working-directory: project
+        run: |
+          pawno\pawncc.exe gamemodes\bykranin.pwn -ipawno\include -iinclude -ogamemodes\bykranin_english.amx
+
+      - name: Upload compiled AMX
+        uses: actions/upload-artifact@v4
+        with:
+          name: bykranin-English-AMX
+          path: project/gamemodes/bykranin_english.amx
