@@ -12,9 +12,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract project
-        shell: powershell
-        run: |
-          Expand-Archive -Path "KRANIN_PWN_MOD_ENGLISH.zip" -DestinationPath "project" -Force
+  shell: powershell
+  run: |
+    $zip = Get-ChildItem -Filter "*.zip" | Select-Object -First 1
+    if (-not $zip) {
+      Write-Error "No ZIP file found in repository"
+      exit 1
+    }
+    Write-Host "Using ZIP: $($zip.Name)"
+    Expand-Archive -Path $zip.FullName -DestinationPath "project" -Force
 
       - name: Compile bykranin.pwn
         shell: cmd
