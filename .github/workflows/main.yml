@@ -11,25 +11,58 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract project
-  shell: powershell
-  run: |
-    $zip = Get-ChildItem -Filter "*.zip" | Select-Object -First 1
-    if (-not $zip) {
-      Write-Error "No ZIP file found in repository"
-      exit 1
-    }
-    Write-Host "Using ZIP: $($zip.Name)"
-    Expand-Archive -Path $zip.FullName -DestinationPath "project" -Force
-
-      - name: Compile bykranin.pwn
-        shell: cmd
-        working-directory: project
+      - name: Find and extract ZIP
+        shell: powershell
         run: |
-          pawno\pawncc.exe gamemodes\bykranin.pwn -ipawno\include -iinclude -ogamemodes\bykranin_english.amx
+          $zip = Get-ChildItem -Path . -Filter "*.zip" -File | Select-Object -First 1
 
-      - name: Upload compiled AMX
+          if (-not $zip) {
+            Write-Error "No ZIP file found"
+            exit 1
+          }
+
+          Write-Host "Using ZIP: $($zip.Name)"
+          Expand-Archive -Path $zip.FullName -DestinationPath ".\project" -Force
+
+      - name: Show project files
+        shell: powershell
+        run: |
+          Get-ChildItem -Path ".\project" -Recurse | Select-Object FullName
+
+      - name: Compile Pawn
+        shell: powershell
+        run: |
+          $pawncc = Get-ChildItem -Path ".\project" -Filter "pawncc.exe" -Recurse | Select-Object -First 1
+
+          if (-not $pawncc) {
+            Write-Error "pawncc.exe not found"
+            exit 1
+          }
+
+          $source = Get-ChildItem -Path ".\project" -Filter "bykranin.pwn" -Recurse | Select-Object -First 1
+
+          if (-not $source) {
+            Write-Error "bykranin.pwn not found"
+            exit 1
+          }
+
+          Write-Host "Compiler: $($pawncc.FullName)"
+          Write-Host "Source: $($source.FullName)"
+
+          & $pawncc.FullName $source.FullName
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Find AMX
+        shell: powershell
+        run: |
+          Get-ChildItem -Path ".\project" -Filter "*.amx" -Recurse | Select-Object FullName
+
+      - name: Upload AMX
         uses: actions/upload-artifact@v4
         with:
           name: bykranin-English-AMX
-          path: project/gamemodes/bykranin_english.amx
+          path: project/**/*.amx
+          if-no-files-found: error
